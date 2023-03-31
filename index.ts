@@ -12,11 +12,11 @@ let fileName = p.basename(path);
 file = fs.readFileSync(path)
 
 const sign = () =>{
-    let {publicKey, privateKey} = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
+    let {publicKey, privateKey} = crypto.generateKeyPairSync('ec', {
+        namedCurve: 'secp256k1',  
         publicKeyEncoding: {
             type: 'spki',
-            format: 'pem',
+            format: 'pem'
         },
         privateKeyEncoding: {
             type: 'pkcs8',

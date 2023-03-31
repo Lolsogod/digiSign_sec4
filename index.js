@@ -38,11 +38,11 @@ let path = reader.question("File path: ");
 let fileName = p.basename(path);
 file = fs_1.default.readFileSync(path);
 const sign = () => {
-    let { publicKey, privateKey } = crypto_1.default.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
+    let { publicKey, privateKey } = crypto_1.default.generateKeyPairSync('ec', {
+        namedCurve: 'secp256k1',
         publicKeyEncoding: {
             type: 'spki',
-            format: 'pem',
+            format: 'pem'
         },
         privateKeyEncoding: {
             type: 'pkcs8',
