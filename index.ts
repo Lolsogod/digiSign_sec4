@@ -1,56 +1,48 @@
 import express, { json } from 'express'
+import * as reader from 'readline-sync';
+import fs from 'fs'
+import * as p from 'path';
 const app = express()
 app.use(express.json())
 import crypto from 'crypto'
 
-app.get('/keys', (req, res) => {
-    let {publicKey, privateKey} = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: {
-            type: 'spki',
-            format: 'der',
-        },
-        privateKeyEncoding: {
-            type: 'pkcs8',
-            format: 'der'
-        }
-    })
-    res.send({publicKey: publicKey.toString('base64'), privateKey: privateKey.toString('base64')})
-})
 
-app.post('/sign', (req, res)=>{
-    let data = req.body.data
-    let privateKey = req.body.privateKey
-    console.log(req.body)
-    crypto.createPrivateKey({
-        key: Buffer.from(privateKey, 'base64'),
-        type: 'pkcs8',
-        format: 'der'
-    })
-    const sign = crypto.createSign('sha256')
-    sign.update(data)
-    sign.end()
-    const signature = sign.sign(privateKey).toString('base64')
-    res.send({data, signature})
-})
+const sign = () =>{
+    let file;
+    let path = reader.question("path: ");
+    let fileName = p.basename(path);
+    file = fs.readFileSync(path)
+    if (file){
+        let {publicKey, privateKey} = crypto.generateKeyPairSync('rsa', {
+            modulusLength: 2048,
+            publicKeyEncoding: {
+                type: 'spki',
+                format: 'pem',
+            },
+            privateKeyEncoding: {
+                type: 'pkcs8',
+                format: 'pem'
+            }
+        })
+        console.log(publicKey)
+        const sign = crypto.createSign('sha256')
+        sign.update(file)
+        sign.end()
+        const signature = sign.sign(privateKey)
+        fs.writeFileSync(`${__dirname}/files/${fileName}.sig`, signature, {
+            flag: "w"
+        });
+        fs.writeFileSync(`${__dirname}/files/${fileName}.key`, publicKey, {
+            flag: "w"
+        });
+        
+        const verify = crypto.createVerify('sha256')
+        verify.update(file)
+        verify.end()
 
-app.post('/verify', (req, res)=>{
-    let {data, publicKey, signature} = req.body
-    
-    let bublicKey = crypto.createPublicKey({
-        key: Buffer.from(publicKey, 'base64'),
-        type: 'spki',
-        format: 'der'
-    })
+        let result = verify.verify(publicKey, signature)
+        console.log(result)
+    }
+}
 
-    const verify = crypto.createVerify('sha256')
-    verify.update(data)
-    verify.end()
-
-    let result = verify.verify(publicKey, Buffer.from(signature, 'base64'))
-
-    res.send({verify: result})
-})
-app.listen('5000',()=>{
-    console.log('started on port 5000')
-})
+sign()

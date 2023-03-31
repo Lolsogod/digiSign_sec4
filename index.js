@@ -1,54 +1,71 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const reader = __importStar(require("readline-sync"));
+const fs_1 = __importDefault(require("fs"));
+const p = __importStar(require("path"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 const crypto_1 = __importDefault(require("crypto"));
-app.get('/keys', (req, res) => {
-    let { publicKey, privateKey } = crypto_1.default.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: {
-            type: 'spki',
-            format: 'der',
-        },
-        privateKeyEncoding: {
-            type: 'pkcs8',
-            format: 'der'
-        }
-    });
-    res.send({ publicKey: publicKey.toString('base64'), privateKey: privateKey.toString('base64') });
-});
-app.post('/sign', (req, res) => {
-    let data = req.body.data;
-    let privateKey = req.body.privateKey;
-    console.log(req.body);
-    crypto_1.default.createPrivateKey({
-        key: Buffer.from(privateKey, 'base64'),
-        type: 'pkcs8',
-        format: 'der'
-    });
-    const sign = crypto_1.default.createSign('sha256');
-    sign.update(data);
-    sign.end();
-    const signature = sign.sign(privateKey).toString('base64');
-    res.send({ data, signature });
-});
-app.post('/verify', (req, res) => {
-    let { data, publicKey, signature } = req.body;
-    let bublicKey = crypto_1.default.createPublicKey({
-        key: Buffer.from(publicKey, 'base64'),
-        type: 'spki',
-        format: 'der'
-    });
-    const verify = crypto_1.default.createVerify('sha256');
-    verify.update(data);
-    verify.end();
-    let result = verify.verify(publicKey, Buffer.from(signature, 'base64'));
-    res.send({ verify: result });
-});
-app.listen('5000', () => {
-    console.log('started on port 5000');
-});
+const sign = () => {
+    let file;
+    let path = reader.question("path: ");
+    let fileName = p.basename(path);
+    file = fs_1.default.readFileSync(path);
+    if (file) {
+        let { publicKey, privateKey } = crypto_1.default.generateKeyPairSync('rsa', {
+            modulusLength: 2048,
+            publicKeyEncoding: {
+                type: 'spki',
+                format: 'pem',
+            },
+            privateKeyEncoding: {
+                type: 'pkcs8',
+                format: 'pem'
+            }
+        });
+        console.log(publicKey);
+        const sign = crypto_1.default.createSign('sha256');
+        sign.update(file);
+        sign.end();
+        const signature = sign.sign(privateKey);
+        fs_1.default.writeFileSync(`${__dirname}/files/${fileName}.sig`, signature, {
+            flag: "w"
+        });
+        fs_1.default.writeFileSync(`${__dirname}/files/${fileName}.key`, publicKey, {
+            flag: "w"
+        });
+        const verify = crypto_1.default.createVerify('sha256');
+        verify.update(file);
+        verify.end();
+        let result = verify.verify(publicKey, signature);
+        console.log(result);
+    }
+};
+sign();
